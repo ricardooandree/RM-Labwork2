@@ -42,7 +42,7 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
 
   private static SipFactory sipFactory;
 
-  //Data structure to control the credit of each user
+  // Data structure to control the credit of each user
   public static HashMap<String, CreditControl> usersCreditDB = new HashMap<String, CreditControl>();
 
   /**
@@ -85,19 +85,14 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
   }
 
 
-
-
-
-
-
-
-
-
-
-
   @Override
   protected void doInvite(SipServletRequest request) throws ServletException, IOException
   {
+
+    /*
+     * TODO: Process INVITE requests
+     */
+
     try
     {
     logger.info("==============> RM T2 logger: Proccessing INVITE (" + request.getFrom() + " -> " + request.getTo() +") Request...");
@@ -132,16 +127,16 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
   }
 
 
-
-
     @Override
     protected void doAck(SipServletRequest request) throws ServletException, IOException
     {
-      // process ACK
+      /*
+       * TODO: Process ACK requests
+       */
+
       try
       {
         logger.info("==============> RM T2 logger: Proccessing ACK (" + request.getFrom() + " -> " + request.getTo() +") Request...");
-        logger.info("==============> RM T2 logger: please complete doACK ...");
       }
       catch (Exception e) {
       logger.error( "==============> RM T2 logger: Failure in doACK method.", e );
@@ -149,15 +144,28 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
     }
 
 
-
     @Override
     protected void doBye(SipServletRequest request) throws ServletException, IOException
     {
-      // process Bye
-      try
-      {
+      /*
+       * TODO: Process BYE requests
+       * RECEBE BYE
+       * CANCELA TIMER
+       * RESTITUI CREDITO RESERVADO COM BASE NO TEMPO NAO CONSUMIDO PELO TIMER
+       * 
+       */
+
+      try {
         logger.info("==============> RM T2 logger: Proccessing BYE (" + request.getFrom() + " -> " + request.getTo() +") Request...");
-        logger.info("==============> RM T2 logger: please complete doBye ...");
+
+        // Get the callId
+        String callId = request.getCallId();
+
+        // Check if the call is already in the database
+        if (usersCreditDB.containsKey(callId)) {
+          CreditControl creditControl = usersCreditDB.get(callId);
+
+        }
       }
       catch (Exception e) {
       logger.error( "==============> RM T2 logger: Failure in doBye method.", e );
@@ -169,12 +177,52 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
     @Override
     protected void doSuccessResponse(SipServletResponse response) throws ServletException, IOException
     {
-      // process 2xx response codes
-      try
-      {
-           logger.info("==============> RM T2 logger: Proccessing doSuccessResponse  STATUS(" + response.getStatus() + " from " + response.getFrom().getURI().toString() + ")...");
-           logger.info("==============> RM T2 logger: please complete doSuccessResponse ...");
-           
+      /*
+       * TODO: Process 200 OK responses
+       * RECEBE 200 OK 
+       * VERIFICA SE É DE UM INVITE
+       * RESERVA 40 CREDITOS
+       * INICIA TIMER (2 MINS)
+       * SE TIMER EXPIRAR, RENOVA TIMER
+       * SE CREDITO FICAR NEGATIVO, TRANSMITIR MENSAGEM DE ALERTA
+       * 
+       * NOTE: O TIMER E O CREDITO VAO SER MANUSEADOS POR OUTROS METHODS (DOBYE, DOERRORRESPONSE)
+       * NOTE: HASHMAP USERS_CREDIT_DB<STRING, CREDIT_CONTROL> GUARDA O CC DE CADA USER
+       */
+
+      try {
+        logger.info("==============> RM T2 logger: Proccessing doSuccessResponse  STATUS(" + response.getStatus() + " from " + response.getFrom().getURI().toString() + ")...");
+
+        
+        // Check if the response (200 OK) is from an INVITE
+        if (response.getMethod().equals("INVITE")) {
+
+          // Get the from and to address/name
+          String from = response.getFrom().getURI().toString();
+          String to = request.getTo().getURI().toString();
+
+          // Get the callId
+          String callID = response.getCallId();
+
+          // Check if the user credit control exists in the database (HashMap)
+          if (usersCreditDB.containsKey(from)) {
+            // FIXME: WHAT'S THE CC KEY? CALLID OR FROM?
+            // Get the caller credit control
+            CreditControl userCreditControl = usersCreditDB.get(from);
+
+            // FIXME: PARAMETERS
+            userCreditControl.startBillingSession(callID, to);
+
+            // Check if the credit is negative
+            if (creditControl.getCredit() < 0) {
+              // Send alert message
+              sendSIPMessage(creditControl.getUser(), "Your credit is negative!");
+            }
+
+          } else {
+            // FIXME: CREATE A NEW CREDIT CONTROL OR JUST IGNORE?
+          }
+        }
       }
       catch (Exception e) {
       logger.error( "==============> RM T2 logger: Failure in doSuccessResponse method.", e );
@@ -182,22 +230,19 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
     }
 
 
-
-
-
-
-
-
-
-
-
   @Override
   protected void doErrorResponse(SipServletResponse response ) throws ServletException, IOException
   {
+
+    /*
+     * TODO: Process Error Responses
+     * VERIFICA O TIPO DE ERRO (404, 402)
+     * 
+     */
+
     try
     {
     logger.info("==============> RM T2 logger: Proccessing Error Response (" + response.getStatus() + ")...");
-    logger.info("==============> RM T2 logger: please complete doErrorResponse ...");
 
     if(response.getStatus() == 404) //404 - not found; User not found;
     {
@@ -218,19 +263,6 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
       logger.error( "==============> RM T2 logger: Failure in doErrorResponse method.", e );
     }
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
