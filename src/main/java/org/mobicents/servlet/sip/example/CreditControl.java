@@ -11,6 +11,7 @@ package org.mobicents.servlet.sip.example;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 
 /**
  * 
@@ -135,54 +136,49 @@ public class CreditControl
    * Objective 2: Online taxation
    * Manages the billing session for a call (online)
    */
-  public void startBillingSession(String callID, String to) {
+  public String startBillingSession(String callID, String to) {
     // Check if theres enough credit to start a call
+    // FIXME:
     if (this.credit <= 0) {
-      return;
+      return "Not enough credit to start a call";
     }
 
     // Creates and adds a CallSession to the HashMap
-    CallSession callSession = new CallSession(callID, this.user, to);
+    CallSession callSession = new CallSession(callID, this.user, to, this.credit);
     this.callSessions.put(callID, callSession);
 
-    // Reserve credit for the call
+    // Reserve initial credit for the call
+    // 20 is the tax for establishing a connection
+    // 20 is the tax per round (2 minutes)
     this.subCredit(40);
 
     // Start timer
     callSession.startTimer();
+
+    return "Call started";
   }
 
 
   public void stopBillingSession(String callID) {
-    // placeholder code
+    // Get the CallSession from the HashMap
     CallSession callSession = callSessions.get(callID);
-    if (callSession != null)
-    {
+
+    if (callSession != null) {
+      // Stop the timer
       callSession.stopTimer();
-      int duration = callSession.getDuration();
-      float price = calculateTaxOffline(duration);
+
+      // Calculate the price of the call
+      float price = calculateOnlineTax( callSession.getTimerRounds() );
+
+      // Update the users credit
       this.subCredit(price);
     }
   }
 
-
-  public static float calculateOnlineTax(int duration) {
-    return duration * 0.1f; // placeholder code
-  }
-
-
-  public void chargeUser(String callID) {
-    // placeholder code
-    CallSession callSession = callSessions.get(callID);
-    if (callSession != null)
-    {
-      callSession.stopTimer();
-      int duration = callSession.getDuration();
-      float price = calculateOnlineTax(duration);
-      this.subCredit(price);
-    }
-
-    // subCredit(price);
+  // FIXME: Taxing calculation can't be done like this, the credits need to be removed every 2 minutes when the timer runs out
+  public static float calculateOnlineTax(int timerRounds) {
+    // timerRounds - 1 because the first round is already charged/reserved when the call starts
+    return (float) 20 * (timerRounds - 1);
   }
   
 } //class ends

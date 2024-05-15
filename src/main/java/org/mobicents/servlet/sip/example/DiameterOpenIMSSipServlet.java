@@ -152,18 +152,23 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
        * RECEBE BYE
        * CANCELA TIMER
        * RESTITUI CREDITO RESERVADO COM BASE NO TEMPO NAO CONSUMIDO PELO TIMER
-       * 
        */
 
       try {
         logger.info("==============> RM T2 logger: Proccessing BYE (" + request.getFrom() + " -> " + request.getTo() +") Request...");
 
+        // Get the from and to address/name
+        String from = response.getFrom().getURI().toString();
+        String to = request.getTo().getURI().toString();
+
         // Get the callId
         String callId = request.getCallId();
 
         // Check if the call is already in the database
-        if (usersCreditDB.containsKey(callId)) {
-          CreditControl creditControl = usersCreditDB.get(callId);
+        if (usersCreditDB.containsKey(from)) {
+          CreditControl userCreditControl = usersCreditDB.get(from);
+
+          String startCall = userCreditControl.stopBillingSession(callID);
 
         }
       }
@@ -206,18 +211,16 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
 
           // Check if the user credit control exists in the database (HashMap)
           if (usersCreditDB.containsKey(from)) {
-            // FIXME: WHAT'S THE CC KEY? CALLID OR FROM?
             // Get the caller credit control
             CreditControl userCreditControl = usersCreditDB.get(from);
 
-            // FIXME: PARAMETERS
-            userCreditControl.startBillingSession(callID, to);
+            String startCall = userCreditControl.startBillingSession(callID, to);
 
-            // Check if the credit is negative
-            if (creditControl.getCredit() < 0) {
-              // Send alert message
-              sendSIPMessage(creditControl.getUser(), "Your credit is negative!");
-            }
+            // Check if the call was started
+            if (!startCall.equals("Call started")) {
+              // FIXME: Alert message might not be correctly implemented
+              sendSIPMessage(from, "Not enough credit to start a call!");
+            } 
 
           } else {
             // FIXME: CREATE A NEW CREDIT CONTROL OR JUST IGNORE?
