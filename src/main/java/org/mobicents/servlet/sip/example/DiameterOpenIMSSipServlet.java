@@ -164,13 +164,30 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
         // Get the callId
         String callId = request.getCallId();
 
-        // Check if the call is already in the database
+        // Declare user credit control object
+        CreditControl userCreditControl = null;
+
+        // Check if the from or to address is in the usersCreditDB - find the real client (from)
         if (usersCreditDB.containsKey(from)) {
-          CreditControl userCreditControl = usersCreditDB.get(from);
+          // Get the caller credit control
+          userCreditControl = usersCreditDB.get(from);
 
-          String startCall = userCreditControl.stopBillingSession(callID);
+        } else if (usersCreditDB.containsKey(to)) {
+          // Get the caller credit control
+          userCreditControl = usersCreditDB.get(to);
 
+        } else {
+          // FIXME: THERE'S NO CREDIT CONTROL OBJECT FOR THIS CALL
         }
+
+        // Get callSession object NOTE: Not needed
+        // CallSession callSession = userCreditControl.getCallSession(callID);
+
+        if (userCreditControl != null) {
+          // Valid callSession object
+          userCreditControl.stopBillingSession(callID);
+        }
+
       }
       catch (Exception e) {
       logger.error( "==============> RM T2 logger: Failure in doBye method.", e );
@@ -190,9 +207,6 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
        * INICIA TIMER (2 MINS)
        * SE TIMER EXPIRAR, RENOVA TIMER
        * SE CREDITO FICAR NEGATIVO, TRANSMITIR MENSAGEM DE ALERTA
-       * 
-       * NOTE: O TIMER E O CREDITO VAO SER MANUSEADOS POR OUTROS METHODS (DOBYE, DOERRORRESPONSE)
-       * NOTE: HASHMAP USERS_CREDIT_DB<STRING, CREDIT_CONTROL> GUARDA O CC DE CADA USER
        */
 
       try {
@@ -214,16 +228,24 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
             // Get the caller credit control
             CreditControl userCreditControl = usersCreditDB.get(from);
 
-            String startCall = userCreditControl.startBillingSession(callID, to);
+            boolean callStarted = userCreditControl.startBillingSession(callID, to);
 
-            // Check if the call was started
-            if (!startCall.equals("Call started")) {
+            // Check if the call was started - startBillingSession returns true if the call was started
+            if (!startCall) {
+              // Failed to start a call due to lack of available credits
+
               // FIXME: Alert message might not be correctly implemented
-              sendSIPMessage(from, "Not enough credit to start a call!");
+              // sendSIPMessage(from, "Not enough credit to start a call!");
+              // criar objeto response e fazer response.send response. create/make response
+              // NAO É SENDSIPMESSAGE PQ TEM DE INTERROMPER O ESTABELECIMENTO DE LIGACAO - SE O CREDITO ACABAR DURANTE CHAMADA É SÓ O POPUP - SENDSIPMESSAGE
+
+              // response.createResponse(SipServletResponse.SC_PAYMENT_REQUIRED, "Not enough credit to start a call!").send();
             } 
 
           } else {
             // FIXME: CREATE A NEW CREDIT CONTROL OR JUST IGNORE?
+
+            // response.createResponse(SipServletResponse.SC_NOT_FOUND, "User not found!").send();s
           }
         }
       }

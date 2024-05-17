@@ -1,9 +1,8 @@
 package org.mobicents.servlet.sip.example;
 
-import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Timer;
+import java.util.TimerTask;
 
 public class CallSession {
     private String callID;
@@ -16,12 +15,14 @@ public class CallSession {
     private Date startTime;
     private Date endTime;
     private Timer timer;
+    private CreditControl creditControl;
 
-    public CallSession(String callID, String from, String to, float credit) {
+    public CallSession(String callID, String from, String to, float credit, CreditControl creditControl) {
         this.callID = callID;
         this.from = from;
         this.to = to;
         this.credit = credit;
+        this.creditControl = creditControl;
 
         this.duration = 0;
         this.timerRounds = 0;
@@ -41,13 +42,14 @@ public class CallSession {
             @Override
             public void run() {
                 // Increment timer rounds
-                timerRounds++;
+                this.timerRounds++;
 
-                // FIXME: Instead of using timerRounds, we should take the credits directly for each timer cycle 
-                //if (CreditControl.this.getCredit() < 0.0) {
-                    //DiameterOpenIMSSipServlet.sendSIPMessage(this.from, "Credit is over");
-                //}
-                //CreditControl.this.subCredit(20);
+                if (creditControl.getCredit() < 0.0) {
+                    DiameterOpenIMSSipServlet.sendSIPMessage(from, "Credit is over");
+                }
+                
+                // Deduct credit
+                creditControl.subCredit(20);
 
                 // Restart timer
                 startTimer();
@@ -64,6 +66,12 @@ public class CallSession {
 
         // Calculate call duration
         this.duration = (int) (this.endTime.getTime() - this.startTime.getTime());
+
+        // Give back the reserved credit
+        // NOTE: TEST THE DURATION TIME - IS IT MILISECONDS?
+        float unusedCredit = (float) this.duration / 1000.0f - (this.timerRounds - 1) * 120.0f;
+
+        creditControl.addCredit(unusedCredit);
     }
 
     public int getDuration() {

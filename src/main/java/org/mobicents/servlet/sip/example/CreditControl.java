@@ -26,7 +26,7 @@ public class CreditControl
   private Date date_off;  // date when a given user is unregistered
   private float credit;  // amount of credit
   private boolean is_registered; // controls if user is registered
-  private HashMap<String, CallSession> callSessions;
+  private HashMap<String, CallSession> callSessionMap;
 
   
   public CreditControl(String user, Date date)
@@ -35,7 +35,7 @@ public class CreditControl
     this.credit = 1000;
     this.user = user;
     this.date_off = date;//new SimpleDateFormat("dd/MM/yyyy 'at' HH:mm:ss").format(date);
-    this.callSessions = new HashMap<>();
+    this.callSessionMap = new HashMap<>();
   }
 
 
@@ -75,6 +75,13 @@ public class CreditControl
   public float subCredit(float value)
   {
     credit = credit-value;
+    return credit;
+  }
+
+
+  public float addCredit(float value)
+  {
+    credit = credit+value;
     return credit;
   }
 
@@ -136,49 +143,39 @@ public class CreditControl
    * Objective 2: Online taxation
    * Manages the billing session for a call (online)
    */
-  public String startBillingSession(String callID, String to) {
+  public boolean startBillingSession(String callID, String to) {
     // Check if theres enough credit to start a call
-    // FIXME:
-    if (this.credit <= 0) {
-      return "Not enough credit to start a call";
+    if (this.credit < 40) {
+      return false;
     }
 
     // Creates and adds a CallSession to the HashMap
-    CallSession callSession = new CallSession(callID, this.user, to, this.credit);
-    this.callSessions.put(callID, callSession);
+    CallSession callSession = new CallSession(callID, this.user, to, this.credit, this);
+    this.callSessionMap.put(callID, callSession);
 
-    // Reserve initial credit for the call
-    // 20 is the tax for establishing a connection
-    // 20 is the tax per round (2 minutes)
+    // Reserve initial credit for the call - 20 + 20
     this.subCredit(40);
 
     // Start timer
     callSession.startTimer();
 
-    return "Call started";
+    return true;
   }
 
 
   public void stopBillingSession(String callID) {
     // Get the CallSession from the HashMap
-    CallSession callSession = callSessions.get(callID);
+    CallSession callSession = this.callSessionMap.get(callID);
 
     if (callSession != null) {
       // Stop the timer
       callSession.stopTimer();
-
-      // Calculate the price of the call
-      float price = calculateOnlineTax( callSession.getTimerRounds() );
-
-      // Update the users credit
-      this.subCredit(price);
     }
   }
 
-  // FIXME: Taxing calculation can't be done like this, the credits need to be removed every 2 minutes when the timer runs out
-  public static float calculateOnlineTax(int timerRounds) {
-    // timerRounds - 1 because the first round is already charged/reserved when the call starts
-    return (float) 20 * (timerRounds - 1);
+
+  public CallSession getCallSession(String callID) {
+    return this.callSessionMap.get(callID);
   }
   
 } //class ends
