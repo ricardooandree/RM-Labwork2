@@ -12,6 +12,7 @@ package org.mobicents.servlet.sip.example;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import org.apache.log4j.Logger;
 
 /**
  * 
@@ -27,6 +28,7 @@ public class CreditControl
   private float credit;  // amount of credit
   private boolean is_registered; // controls if user is registered
   private HashMap<String, CallSession> callSessionMap;
+  private static final Logger logger = Logger.getLogger(CreditControl.class);
 
   
   public CreditControl(String user, Date date)
@@ -144,8 +146,10 @@ public class CreditControl
    * Manages the billing session for a call (online)
    */
   public boolean startBillingSession(String callID, String to) {
+    logger.info("==============> RM T2 logger: startBillingSession");
     // Check if theres enough credit to start a call
     if (this.credit < 40) {
+      logger.info("==============> RM T2 logger: insufficient credit to start a call");
       return false;
     }
 
@@ -153,9 +157,13 @@ public class CreditControl
     CallSession callSession = new CallSession(callID, this.user, to, this.credit, this);
     this.callSessionMap.put(callID, callSession);
 
+    logger.info("==============> RM T2 logger: Created CallSession and added to HashMap");
+
     // Reserve initial credit for the call - 20 + 20
     this.subCredit(40);
 
+    logger.info("==============> RM T2 logger: reserved initial credit for the call, total credit: " + this.credit);
+    
     // Start timer
     callSession.startTimer();
 

@@ -3,6 +3,7 @@ package org.mobicents.servlet.sip.example;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
+import org.apache.log4j.Logger;
 
 public class CallSession {
     private String callID;
@@ -16,6 +17,7 @@ public class CallSession {
     private Date endTime;
     private Timer timer;
     private CreditControl creditControl;
+    private static final Logger logger = Logger.getLogger(CallSession.class);
 
     public CallSession(String callID, String from, String to, float credit, CreditControl creditControl) {
         this.callID = callID;
@@ -37,6 +39,8 @@ public class CallSession {
             this.startTime = new Date();
         }
 
+        logger.info("==============> RM T2 logger: started timer for callID: " + this.callID + " from: " + this.from + " to: " + this.to + " credit: " + creditControl.getCredit() + " startTime: " + this.startTime);
+
         // Start timer
         this.timer.schedule(new TimerTask() {
             @Override
@@ -46,10 +50,14 @@ public class CallSession {
 
                 if (creditControl.getCredit() < 0.0) {
                     DiameterOpenIMSSipServlet.sendSIPMessage(from, "Credit is over");
+
+                    logger.info("==============> RM T2 logger: credit is over total credit: " + creditControl.getCredit());
                 }
                 
                 // Deduct credit
                 creditControl.subCredit(20);
+
+                logger.info("==============> RM T2 logger: about to restart timer for callID: " + callID + " from: " + from + " to: " + to + " credit: " + creditControl.getCredit() + " timerRounds: " + timerRounds);
 
                 // Restart timer
                 startTimer();
@@ -71,7 +79,11 @@ public class CallSession {
         // NOTE: TEST THE DURATION TIME - IS IT MILISECONDS?
         float unusedCredit = (float) this.duration / 1000.0f - (this.timerRounds - 1) * 120.0f;
 
+        logger.info("==============> RM T2 logger: timer stopped credits before giving back: " + creditControl.getCredit());
+
         creditControl.addCredit(unusedCredit);
+
+        logger.info("==============> RM T2 logger: timer stopped for callID: " + this.callID + " from: " + this.from + " to: " + this.to + " start date: " + startTime + " end date: " + endTime + " credit: " + creditControl.getCredit() + " duration: " + this.duration + " timerRounds: " + this.timerRounds + " unusedCredit: " + unusedCredit);
     }
 
     public int getDuration() {
