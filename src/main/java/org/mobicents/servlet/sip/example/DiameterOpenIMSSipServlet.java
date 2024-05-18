@@ -105,6 +105,8 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
     logger.info("==============> RM T2 logger: Proccessing INVITE: From " + from);
     logger.info("==============> RM T2 logger: Proccessing INVITE: CallID " + request.getCallId());
 
+      // TODO: SEND ERROR MESSAGE 
+
     if(request.isInitial())
     {
       Proxy proxy = request.getProxy();
@@ -158,7 +160,7 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
         logger.info("==============> RM T2 logger: Proccessing BYE (" + request.getFrom() + " -> " + request.getTo() +") Request...");
 
         // Get the from and to address/name
-        String from = response.getFrom().getURI().toString();
+        String from = request.getFrom().getURI().toString();
         String to = request.getTo().getURI().toString();
 
         // Get the callId
@@ -172,21 +174,23 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
           // Get the caller credit control
           userCreditControl = usersCreditDB.get(from);
 
-        } else if (usersCreditDB.containsKey(to)) {
-          // Get the caller credit control
-          userCreditControl = usersCreditDB.get(to);
+          if ( userCreditControl.existCallSession(callId) ) {
+            // Call stop billing session
+            userCreditControl.stopBillingSession(callId);
+          } else {
+            // Get the caller credit control
+            userCreditControl = usersCreditDB.get(to);
 
+            if ( userCreditControl.existCallSession(callId) ) {
+              // Call stop billing session
+              userCreditControl.stopBillingSession(callId);
+          }
         } else {
           // FIXME: THERE'S NO CREDIT CONTROL OBJECT FOR THIS CALL
         }
 
         // Get callSession object NOTE: Not needed
         // CallSession callSession = userCreditControl.getCallSession(callID);
-
-        if (userCreditControl != null) {
-          // Valid callSession object
-          userCreditControl.stopBillingSession(callID);
-        }
 
       }
       catch (Exception e) {
@@ -218,7 +222,7 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
 
           // Get the from and to address/name
           String from = response.getFrom().getURI().toString();
-          String to = request.getTo().getURI().toString();
+          String to = response.getTo().getURI().toString();
 
           // Get the callId
           String callID = response.getCallId();
@@ -231,7 +235,7 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
             boolean callStarted = userCreditControl.startBillingSession(callID, to);
 
             // Check if the call was started - startBillingSession returns true if the call was started
-            if (!startCall) {
+            if (!callStarted) {
               // Failed to start a call due to lack of available credits
 
               // FIXME: Alert message might not be correctly implemented
@@ -239,7 +243,7 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
               // criar objeto response e fazer response.send response. create/make response
               // NAO É SENDSIPMESSAGE PQ TEM DE INTERROMPER O ESTABELECIMENTO DE LIGACAO - SE O CREDITO ACABAR DURANTE CHAMADA É SÓ O POPUP - SENDSIPMESSAGE
 
-              // response.createResponse(SipServletResponse.SC_PAYMENT_REQUIRED, "Not enough credit to start a call!").send();
+              response.createResponse(SipServletResponse.SC_PAYMENT_REQUIRED, "Not enough credit to start a call!").send();
             } 
 
           } else {

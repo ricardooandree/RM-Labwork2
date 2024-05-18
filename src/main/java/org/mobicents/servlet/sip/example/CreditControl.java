@@ -157,13 +157,12 @@ public class CreditControl
     CallSession callSession = new CallSession(callID, this.user, to, this.credit, this);
     this.callSessionMap.put(callID, callSession);
 
-    logger.info("==============> RM T2 logger: Created CallSession and added to HashMap");
 
     // Reserve initial credit for the call - 20 + 20
     this.subCredit(40);
 
     logger.info("==============> RM T2 logger: reserved initial credit for the call, total credit: " + this.credit);
-    
+
     // Start timer
     callSession.startTimer();
 
@@ -172,6 +171,8 @@ public class CreditControl
 
 
   public void stopBillingSession(String callID) {
+    logger.info("==============> RM T2 logger: stopBillingSession");
+
     // Get the CallSession from the HashMap
     CallSession callSession = this.callSessionMap.get(callID);
 
@@ -182,8 +183,16 @@ public class CreditControl
   }
 
 
-  public CallSession getCallSession(String callID) {
-    return this.callSessionMap.get(callID);
+  public boolean existCallSession(String callID) {
+    CallSession callSession = this.callSessionMap.get(callID);
+
+    if (callSession != null) {
+      logger.info("==============> RM T2 logger: callSession exists for callID: " + callID);
+      return true;
+    }
+
+    logger.info("==============> RM T2 logger: callSession does not exist for callID: " + callID);
+    return false;
   }
   
 } //class ends

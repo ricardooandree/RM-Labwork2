@@ -46,16 +46,15 @@ public class CallSession {
             @Override
             public void run() {
                 // Increment timer rounds
-                this.timerRounds++;
+                CallSession.this.timerRounds++;
+                // Deduct credit
+                creditControl.subCredit(20);
 
                 if (creditControl.getCredit() < 0.0) {
                     DiameterOpenIMSSipServlet.sendSIPMessage(from, "Credit is over");
 
                     logger.info("==============> RM T2 logger: credit is over total credit: " + creditControl.getCredit());
                 }
-                
-                // Deduct credit
-                creditControl.subCredit(20);
 
                 logger.info("==============> RM T2 logger: about to restart timer for callID: " + callID + " from: " + from + " to: " + to + " credit: " + creditControl.getCredit() + " timerRounds: " + timerRounds);
 
@@ -76,8 +75,17 @@ public class CallSession {
         this.duration = (int) (this.endTime.getTime() - this.startTime.getTime());
 
         // Give back the reserved credit
-        // NOTE: TEST THE DURATION TIME - IS IT MILISECONDS?
-        float unusedCredit = (float) this.duration / 1000.0f - (this.timerRounds - 1) * 120.0f;
+        // Convert duration to seconds
+        int durationInSeconds = this.duration / 1000;
+
+        // Calculate complete timer rounds
+        int completeRounds = durationInSeconds / 120;
+
+        // Calculate remaining seconds after complete rounds
+        int remainingSeconds = durationInSeconds % 120;
+
+        // Calculate unused credit
+        float unusedCredit = (120 - remainingSeconds) * (20.0f / 120.0f);
 
         logger.info("==============> RM T2 logger: timer stopped credits before giving back: " + creditControl.getCredit());
 
