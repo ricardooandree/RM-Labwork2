@@ -15,10 +15,10 @@ import java.util.HashMap;
 import org.apache.log4j.Logger;
 
 /**
- * 
+ *
  * CreditControl.java
  *
- * 
+ *
  */
 public class CreditControl
 {
@@ -30,14 +30,14 @@ public class CreditControl
   private HashMap<String, CallSession> callSessionMap;
   private static final Logger logger = Logger.getLogger(CreditControl.class);
 
-  
+
   public CreditControl(String user, Date date)
   {
     this.is_registered = true;
-    this.credit = 1000;
+    this.credit = 50;
     this.user = user;
     this.date_off = date;//new SimpleDateFormat("dd/MM/yyyy 'at' HH:mm:ss").format(date);
-    this.callSessionMap = new HashMap<>();
+    this.callSessionMap = new HashMap<String, CallSession>();
   }
 
 
@@ -46,7 +46,7 @@ public class CreditControl
     return "Dear " + this.user + ", your credit is " + this.credit + ".";
   }
 
-  
+
   @Override
   public int hashCode()
   {
@@ -108,10 +108,10 @@ public class CreditControl
     if (!this.is_registered)
     {
       Date now = new Date();
-      
+
       long diff = now.getTime() - date_off.getTime();   // Difference in miliseconds
 
-      int minutes = (int) (diff / (1000 * 60));   // Convert to mins 
+      int minutes = (int) (diff / (1000 * 60));   // Convert to mins
 
       float price = calculateOfflineTax(minutes); // Price per minute (seconds-testing)
       this.subCredit(price);
@@ -126,7 +126,7 @@ public class CreditControl
   public static float calculateOfflineTax(int minutes) {
     float price = 0.0f;
     int round = 1;
-    
+
     while (minutes > 0) {
         if (minutes > 60) {
             price += round * 60;
@@ -157,6 +157,7 @@ public class CreditControl
     CallSession callSession = new CallSession(callID, this.user, to, this.credit, this);
     this.callSessionMap.put(callID, callSession);
 
+    logger.info("==============> RM T2 logger: Created CallSession and added to HashMap");
 
     // Reserve initial credit for the call - 20 + 20
     this.subCredit(40);
@@ -171,15 +172,18 @@ public class CreditControl
 
 
   public void stopBillingSession(String callID) {
-    logger.info("==============> RM T2 logger: stopBillingSession");
-
+      logger.info("==============> RM T2 logger: stopBillingSession");
     // Get the CallSession from the HashMap
     CallSession callSession = this.callSessionMap.get(callID);
 
     if (callSession != null) {
+        logger.info("==============> RM T2 logger: calling stopTimer");
       // Stop the timer
       callSession.stopTimer();
+    } else {
+      logger.info("==============> RM T2 logger: call session is null = failed to call stopTimer because calllID is null");
     }
+    
   }
 
 
@@ -187,13 +191,14 @@ public class CreditControl
     CallSession callSession = this.callSessionMap.get(callID);
 
     if (callSession != null) {
-      logger.info("==============> RM T2 logger: callSession exists for callID: " + callID);
-      return true;
+        logger.info("==============> RM T2 logger: call session exists for call ID: " + callID);
+        return true;
     }
 
-    logger.info("==============> RM T2 logger: callSession does not exist for callID: " + callID);
+    logger.info("==============> RM T2 logger: call session does not exist for call ID: " + callID);
     return false;
   }
-  
+
 } //class ends
+
 

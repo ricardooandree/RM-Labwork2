@@ -42,7 +42,7 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
 
   private static SipFactory sipFactory;
 
-  // Data structure to control the credit of each user
+  //Data structure to control the credit of each user
   public static HashMap<String, CreditControl> usersCreditDB = new HashMap<String, CreditControl>();
 
   /**
@@ -85,43 +85,46 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
   }
 
 
+
   @Override
   protected void doInvite(SipServletRequest request) throws ServletException, IOException
   {
-
-    /*
-     * TODO: Process INVITE requests
-     */
-
     try
     {
-    logger.info("==============> RM T2 logger: Proccessing INVITE (" + request.getFrom() + " -> " + request.getTo() +") Request...");
-    logger.info("==============> RM T2 logger: please complete doInvite ...");
+      logger.info("==============> RM T2 logger: Proccessing INVITE (" + request.getFrom() + " -> " + request.getTo() +") Request...");
+      logger.info("==============> RM T2 logger: please complete doInvite ...");
 
-    // rado's comments
-    // sends the Invite back - see page 42 of spec.book ("sipservlet-1.0-fcs.pdf") in in "rm_biblio" Desktop folder
+      // rado's comments
+      // sends the Invite back - see page 42 of spec.book ("sipservlet-1.0-fcs.pdf") in in "rm_biblio" Desktop folder
 
-    String from = request.getFrom().getURI().toString();
-    logger.info("==============> RM T2 logger: Proccessing INVITE: From " + from);
-    logger.info("==============> RM T2 logger: Proccessing INVITE: CallID " + request.getCallId());
+      String from = request.getFrom().getURI().toString();
+      logger.info("==============> RM T2 logger: Proccessing INVITE: From " + from);
+      logger.info("==============> RM T2 logger: Proccessing INVITE: CallID " + request.getCallId());
 
-      // TODO: SEND ERROR MESSAGE 
+      // Check if the user has enough credit to start a call
+      CreditControl userCreditControl = usersCreditDB.get(from);
+      if (userCreditControl.getCredit() < 40) {
+          logger.info("==============> RM T2 logger: not enough credits to start a call");
 
-    if(request.isInitial())
-    {
-      Proxy proxy = request.getProxy();
-      if(request.getSession().getAttribute( "firstInvite") == null)
-      {
-        request.getSession().setAttribute( "firstInvite", true );
-        proxy.setRecordRoute(true);
-        proxy.setSupervised(true);
-        proxy.proxyTo( request.getRequestURI() );
+          SipServletResponse responseError = request.createResponse(402);
+          responseError.send();
+          
+      } else if(request.isInitial()) {
+          logger.info("==============> RM T2 logger: proxying...");
+          
+        Proxy proxy = request.getProxy();
+        if(request.getSession().getAttribute( "firstInvite") == null)
+        {
+          request.getSession().setAttribute( "firstInvite", true );
+          proxy.setRecordRoute(true);
+          proxy.setSupervised(true);
+          proxy.proxyTo( request.getRequestURI() );
+        }
+        else
+        {
+          proxy.proxyTo( request.getRequestURI() );
+        }
       }
-      else
-      {
-        proxy.proxyTo( request.getRequestURI() );
-      }
-    }
     }
     catch (Exception e) {
       logger.error( "==============> RM T2 logger: Failure in doInvite method.", e );
@@ -129,21 +132,22 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
   }
 
 
+
+
     @Override
     protected void doAck(SipServletRequest request) throws ServletException, IOException
     {
-      /*
-       * TODO: Process ACK requests
-       */
-
+      // process ACK
       try
       {
         logger.info("==============> RM T2 logger: Proccessing ACK (" + request.getFrom() + " -> " + request.getTo() +") Request...");
+        logger.info("==============> RM T2 logger: please complete doACK ...");
       }
       catch (Exception e) {
       logger.error( "==============> RM T2 logger: Failure in doACK method.", e );
       }
     }
+
 
 
     @Override
@@ -159,12 +163,15 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
       try {
         logger.info("==============> RM T2 logger: Proccessing BYE (" + request.getFrom() + " -> " + request.getTo() +") Request...");
 
+
         // Get the from and to address/name
         String from = request.getFrom().getURI().toString();
         String to = request.getTo().getURI().toString();
 
         // Get the callId
         String callId = request.getCallId();
+
+        logger.info("==============> RM T2 logger: processing BYE - callID: " + callId);
 
         // Declare user credit control object
         CreditControl userCreditControl = null;
@@ -175,22 +182,19 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
           userCreditControl = usersCreditDB.get(from);
 
           if ( userCreditControl.existCallSession(callId) ) {
-            // Call stop billing session
-            userCreditControl.stopBillingSession(callId);
-          } else {
-            // Get the caller credit control
-            userCreditControl = usersCreditDB.get(to);
-
-            if ( userCreditControl.existCallSession(callId) ) {
-              // Call stop billing session
               userCreditControl.stopBillingSession(callId);
+
+          } else {
+              userCreditControl = usersCreditDB.get(to);
+
+              if ( userCreditControl.existCallSession(callId) ) {
+                  userCreditControl.stopBillingSession(callId);
+              }
           }
         } else {
           // FIXME: THERE'S NO CREDIT CONTROL OBJECT FOR THIS CALL
+          logger.info("==============> RM T2 logger: processing BYE - failed to call stopBIllingSession because userCreditControl is null");
         }
-
-        // Get callSession object NOTE: Not needed
-        // CallSession callSession = userCreditControl.getCallSession(callID);
 
       }
       catch (Exception e) {
@@ -205,7 +209,7 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
     {
       /*
        * TODO: Process 200 OK responses
-       * RECEBE 200 OK 
+       * RECEBE 200 OK
        * VERIFICA SE É DE UM INVITE
        * RESERVA 40 CREDITOS
        * INICIA TIMER (2 MINS)
@@ -216,7 +220,7 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
       try {
         logger.info("==============> RM T2 logger: Proccessing doSuccessResponse  STATUS(" + response.getStatus() + " from " + response.getFrom().getURI().toString() + ")...");
 
-        
+
         // Check if the response (200 OK) is from an INVITE
         if (response.getMethod().equals("INVITE")) {
 
@@ -232,19 +236,8 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
             // Get the caller credit control
             CreditControl userCreditControl = usersCreditDB.get(from);
 
-            boolean callStarted = userCreditControl.startBillingSession(callID, to);
-
-            // Check if the call was started - startBillingSession returns true if the call was started
-            if (!callStarted) {
-              // Failed to start a call due to lack of available credits
-
-              // FIXME: Alert message might not be correctly implemented
-              // sendSIPMessage(from, "Not enough credit to start a call!");
-              // criar objeto response e fazer response.send response. create/make response
-              // NAO É SENDSIPMESSAGE PQ TEM DE INTERROMPER O ESTABELECIMENTO DE LIGACAO - SE O CREDITO ACABAR DURANTE CHAMADA É SÓ O POPUP - SENDSIPMESSAGE
-
-              response.createResponse(SipServletResponse.SC_PAYMENT_REQUIRED, "Not enough credit to start a call!").send();
-            } 
+            // Start billing session
+            userCreditControl.startBillingSession(callID, to);
 
           } else {
             // FIXME: CREATE A NEW CREDIT CONTROL OR JUST IGNORE?
@@ -262,16 +255,10 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
   @Override
   protected void doErrorResponse(SipServletResponse response ) throws ServletException, IOException
   {
-
-    /*
-     * TODO: Process Error Responses
-     * VERIFICA O TIPO DE ERRO (404, 402)
-     * 
-     */
-
     try
     {
     logger.info("==============> RM T2 logger: Proccessing Error Response (" + response.getStatus() + ")...");
+    logger.info("==============> RM T2 logger: please complete doErrorResponse ...");
 
     if(response.getStatus() == 404) //404 - not found; User not found;
     {
@@ -281,7 +268,6 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
 
       String toAddress = response.getTo().getURI().toString();
 
-      
     }
     else
     {
@@ -294,16 +280,11 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
   }
 
 
-
-  //////////////////////////////////////////////////////////////////////////////
-  //
-  // sends the final message to the user - SMS
-  //
-  //////////////////////////////////////////////////////////////////////////////
-    public static void sendSIPMessage(String toAddressString, String message)
-  {
-    try
-    {
+  /*
+   * Sends the final message to the user - SMS (Pop-up message)
+   */
+  public static void sendSIPMessage(String toAddressString, String message) {
+    try {
       logger.info( "==============> RM T2 logger: Sending SIP Message [" + message + "] to [" + toAddressString + "]" );
 
       SipApplicationSession appSession = sipFactory.createApplicationSession();
@@ -320,3 +301,4 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
 
   }
 }
+
