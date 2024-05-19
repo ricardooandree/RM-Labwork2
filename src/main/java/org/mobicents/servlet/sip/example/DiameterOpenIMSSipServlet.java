@@ -98,30 +98,41 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
       // sends the Invite back - see page 42 of spec.book ("sipservlet-1.0-fcs.pdf") in in "rm_biblio" Desktop folder
 
       String from = request.getFrom().getURI().toString();
+      String to = request.getTo().getURI().toString();
+
       logger.info("==============> RM T2 logger: Proccessing INVITE: From " + from);
       logger.info("==============> RM T2 logger: Proccessing INVITE: CallID " + request.getCallId());
 
-      // Check if the user has enough credit to start a call
-      CreditControl userCreditControl = usersCreditDB.get(from);
-      if (userCreditControl.getCredit() < 40) {
+
+      CreditControl userFromCreditControl = usersCreditDB.get(from);
+      CreditControl userToCreditControl = usersCreditDB.get(to);
+
+      // Check if the user destination (to) exists in the database
+      if (userToCreditControl == null) {
+        logger.info("==============> RM T2 logger: client who you're trying to call doesn't exist in the database");
+
+        SipServletResponse responseError = request.createResponse(404);
+        responseError.send();
+
+      // Check if the user source (from) has enough credits to start a call
+      } else if (userFromCreditControl.getCredit() < 40) {
           logger.info("==============> RM T2 logger: not enough credits to start a call");
 
           SipServletResponse responseError = request.createResponse(402);
           responseError.send();
-          
+      
+      // Go ahead with proxying the request
       } else if(request.isInitial()) {
           logger.info("==============> RM T2 logger: proxying...");
           
         Proxy proxy = request.getProxy();
-        if(request.getSession().getAttribute( "firstInvite") == null)
-        {
+        if(request.getSession().getAttribute( "firstInvite") == null) {
           request.getSession().setAttribute( "firstInvite", true );
           proxy.setRecordRoute(true);
           proxy.setSupervised(true);
           proxy.proxyTo( request.getRequestURI() );
-        }
-        else
-        {
+
+        } else {
           proxy.proxyTo( request.getRequestURI() );
         }
       }
