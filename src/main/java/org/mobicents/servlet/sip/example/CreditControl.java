@@ -159,6 +159,8 @@ public class CreditControl
 
     logger.info("==============> RM T2 logger: Created CallSession and added to HashMap");
 
+    // TODO: Reserve initial credit based on the user (from or to) flag - different taxation
+
     // Reserve initial credit for the call - 20 + 20
     this.subCredit(40);
 
@@ -177,9 +179,13 @@ public class CreditControl
     CallSession callSession = this.callSessionMap.get(callID);
 
     if (callSession != null) {
-        logger.info("==============> RM T2 logger: calling stopTimer");
+      logger.info("==============> RM T2 logger: calling stopTimer");
       // Stop the timer
-      callSession.stopTimer();
+      callSession.stopTimer();º
+
+      // Remove the CallSession from the HashMap
+      this.callSessionMap.remove(callID);
+
     } else {
       logger.info("==============> RM T2 logger: call session is null = failed to call stopTimer because calllID is null");
     }

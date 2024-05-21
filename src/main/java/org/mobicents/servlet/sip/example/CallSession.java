@@ -58,6 +58,10 @@ public class CallSession {
                 // Increment timer rounds
                 CallSession.this.timerRounds++;
 
+                // TODO: Implement credit deduction
+                // If the client is from then deduct 20 credits
+                // If the client is to then deduct x credits
+
                 // Deduct credit
                 creditControl.subCredit(20);
 
@@ -89,6 +93,10 @@ public class CallSession {
         int durationInSeconds = this.duration / 1000;
 
         int remainingSeconds = durationInSeconds % 120;
+
+        // TODO: Implement unusedCredit calculation
+        // If the client is from then deduct 20 credits
+        // If the client is to then deduct x credits
 
         float unusedCredit = (120 - remainingSeconds) * (20.0f / 120.0f);
 

@@ -250,10 +250,20 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
             // Start billing session
             userCreditControl.startBillingSession(callID, to);
 
+            // TODO:
+            // CreditControl userToCreditControl = usersCreditDB.get(to);
+
+            // userToCreditControl.startBillingSession(CallID, to, (to_flag = true) );
+
+            // in start billing session I need a flag to know if its the from or to user
+
+            // if its from it needs a different calculation than to
+            // which means that in callsession the tax calculation logic has to change based on the client (from or to)
+
+            // register the flag in callsession to differentiate the different types of taxation (from or to) 
+
           } else {
             // FIXME: CREATE A NEW CREDIT CONTROL OR JUST IGNORE?
-
-            // response.createResponse(SipServletResponse.SC_NOT_FOUND, "User not found!").send();s
           }
         }
       }
