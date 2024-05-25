@@ -66,7 +66,7 @@ public class CallSession {
                 }
                 
                 if (creditControl.getCredit() < 0.0) {
-                    DiameterOpenIMSSipServlet.sendSIPMessage(from, "Credit is over");
+                    DiameterOpenIMSSipServlet.sendSIPMessage(creditControl.getUser(), "Credit is over");
 
                     logger.info("==============> RM T2 logger: credit is over total credit: " + creditControl.getCredit());
                 }

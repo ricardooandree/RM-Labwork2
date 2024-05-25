@@ -196,6 +196,7 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
         if ( userToCreditControl.existCallSession(callId) ) {
           userToCreditControl.stopBillingSession(callId);
         }
+      }
       catch (Exception e) {
       logger.error( "==============> RM T2 logger: Failure in doBye method.", e );
       }
