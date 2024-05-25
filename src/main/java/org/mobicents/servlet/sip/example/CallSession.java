@@ -17,9 +17,8 @@ import org.apache.log4j.Logger;
 
 public class CallSession {
     private String callID;
-    private String from;
-    private String to;
     private float credit;
+    private boolean flag;
 
     private int duration;
     private int timerRounds;
@@ -29,12 +28,11 @@ public class CallSession {
     private CreditControl creditControl;
     private static final Logger logger = Logger.getLogger(CallSession.class);
 
-    public CallSession(String callID, String from, String to, float credit, CreditControl creditControl) {
+    public CallSession(String callID, float credit, CreditControl creditControl, boolean flag) {
         this.callID = callID;
-        this.from = from;
-        this.to = to;
         this.credit = credit;
         this.creditControl = creditControl;
+        this.flag = flag;
 
         this.duration = 0;
         this.timerRounds = 0;
@@ -49,7 +47,7 @@ public class CallSession {
             this.startTime = new Date();
         }
 
-        logger.info("==============> RM T2 logger: started timer for callID: " + this.callID + " from: " + this.from + " to: " + this.to + " credit: " + creditControl.getCredit() + " startTime: " + this.startTime);
+        logger.info("==============> RM T2 logger: started timer for callID: " + this.callID + " credit: " + creditControl.getCredit() + " startTime: " + this.startTime);
 
         // Start timer
         this.timer.schedule(new TimerTask() {
@@ -58,20 +56,22 @@ public class CallSession {
                 // Increment timer rounds
                 CallSession.this.timerRounds++;
 
-                // TODO: Implement credit deduction
-                // If the client is from then deduct 20 credits
-                // If the client is to then deduct x credits
+                if (CallSession.this.flag == true) {
+                    // Deduct credit - user: from
+                    creditControl.subCredit(20);
 
-                // Deduct credit
-                creditControl.subCredit(20);
-
+                } else {
+                    // Deduct credit - user: to
+                    creditControl.subCredit(10);
+                }
+                
                 if (creditControl.getCredit() < 0.0) {
                     DiameterOpenIMSSipServlet.sendSIPMessage(from, "Credit is over");
 
                     logger.info("==============> RM T2 logger: credit is over total credit: " + creditControl.getCredit());
                 }
 
-                logger.info("==============> RM T2 logger: about to restart timer for callID: " + callID + " from: " + from + " to: " + to + " credit: " + creditControl.getCredit() + " timerRounds: " + CallSession.this.timerRounds);
+                logger.info("==============> RM T2 logger: about to restart timer for callID: " + callID + " credit: " + creditControl.getCredit() + " timerRounds: " + CallSession.this.timerRounds);
 
                 // Restart timer
                 startTimer();
@@ -94,17 +94,20 @@ public class CallSession {
 
         int remainingSeconds = durationInSeconds % 120;
 
-        // TODO: Implement unusedCredit calculation
-        // If the client is from then deduct 20 credits
-        // If the client is to then deduct x credits
+        float unusedCredit;
 
-        float unusedCredit = (120 - remainingSeconds) * (20.0f / 120.0f);
+        if (this.flag == true) {
+            unusedCredit = (120 - remainingSeconds) * (20.0f / 120.0f);
+
+        } else {
+            unusedCredit = (120 - remainingSeconds) * (10.0f / 120.0f);
+        }
 
         logger.info("==============> RM T2 logger: timer stopped credits before giving back: " + creditControl.getCredit());
 
         creditControl.addCredit(unusedCredit);
 
-        logger.info("==============> RM T2 logger: timer stopped for callID: " + this.callID + " from: " + this.from + " to: " + this.to + " start date: " + startTime + " end date: " + endTime + " credit: " + creditControl.getCredit() + " duration: " + this.duration + " timerRounds: " + CallSession.this.timerRounds + " unusedCredit: " + unusedCredit);
+        logger.info("==============> RM T2 logger: timer stopped for callID: " + this.callID + " start date: " + startTime + " end date: " + endTime + " credit: " + creditControl.getCredit() + " duration: " + this.duration + " timerRounds: " + CallSession.this.timerRounds + " unusedCredit: " + unusedCredit);
     }
 
     public int getDuration() {
@@ -113,5 +116,9 @@ public class CallSession {
 
     public int getTimerRounds() {
         return this.timerRounds;
+    }
+
+    public boolean getFlag(CallSession callSession) {
+        return this.flag;
     }
 }

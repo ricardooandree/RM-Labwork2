@@ -142,29 +142,22 @@ public class CreditControl
 
 
   /*
-   * Objective 2: Online taxation
+   * Objective 2/3: Online taxation
    * Manages the billing session for a call (online)
    */
-  public boolean startBillingSession(String callID, String to) {
+  public boolean startBillingSession(String callID, boolean flag) {
     logger.info("==============> RM T2 logger: startBillingSession");
-    // Check if theres enough credit to start a call
-    if (this.credit < 40) {
-      logger.info("==============> RM T2 logger: insufficient credit to start a call");
-      return false;
-    }
 
+    if (flag == true) {
+      // Reserves inital credit for the call - 20+20
+      this.subCredit(40);
+    } 
+    
     // Creates and adds a CallSession to the HashMap
-    CallSession callSession = new CallSession(callID, this.user, to, this.credit, this);
+    CallSession callSession = new CallSession(callID, this.credit, this, flag);
     this.callSessionMap.put(callID, callSession);
 
     logger.info("==============> RM T2 logger: Created CallSession and added to HashMap");
-
-    // TODO: Reserve initial credit based on the user (from or to) flag - different taxation
-
-    // Reserve initial credit for the call - 20 + 20
-    this.subCredit(40);
-
-    logger.info("==============> RM T2 logger: reserved initial credit for the call, total credit: " + this.credit);
 
     // Start timer
     callSession.startTimer();
@@ -174,14 +167,16 @@ public class CreditControl
 
 
   public void stopBillingSession(String callID) {
-      logger.info("==============> RM T2 logger: stopBillingSession");
+    logger.info("==============> RM T2 logger: stopBillingSession");
+
     // Get the CallSession from the HashMap
     CallSession callSession = this.callSessionMap.get(callID);
 
     if (callSession != null) {
       logger.info("==============> RM T2 logger: calling stopTimer");
+
       // Stop the timer
-      callSession.stopTimer();º
+      callSession.stopTimer();
 
       // Remove the CallSession from the HashMap
       this.callSessionMap.remove(callID);
@@ -189,7 +184,6 @@ public class CreditControl
     } else {
       logger.info("==============> RM T2 logger: call session is null = failed to call stopTimer because calllID is null");
     }
-    
   }
 
 
@@ -204,6 +198,18 @@ public class CreditControl
     logger.info("==============> RM T2 logger: call session does not exist for call ID: " + callID);
     return false;
   }
+
+
+  public CallSession getCallSession(String callID) {
+    CallSession callSession = this.callSessionMap.get(callID);
+
+    if (callSession != null) {
+        return callSession;
+    }
+
+    return null;
+  }
+
 
 } //class ends
 

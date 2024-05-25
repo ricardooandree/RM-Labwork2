@@ -185,34 +185,21 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
         logger.info("==============> RM T2 logger: processing BYE - callID: " + callId);
 
         // Declare user credit control object
-        CreditControl userCreditControl = null;
+        CreditControl userFromCreditControl = usersCreditDB.get(from);
+        CreditControl userToCreditControl = usersCreditDB.get(to);
 
-        // Check if the from or to address is in the usersCreditDB - find the real client (from)
-        if (usersCreditDB.containsKey(from)) {
-          // Get the caller credit control
-          userCreditControl = usersCreditDB.get(from);
-
-          if ( userCreditControl.existCallSession(callId) ) {
-              userCreditControl.stopBillingSession(callId);
-
-          } else {
-              userCreditControl = usersCreditDB.get(to);
-
-              if ( userCreditControl.existCallSession(callId) ) {
-                  userCreditControl.stopBillingSession(callId);
-              }
-          }
-        } else {
-          // FIXME: THERE'S NO CREDIT CONTROL OBJECT FOR THIS CALL
-          logger.info("==============> RM T2 logger: processing BYE - failed to call stopBIllingSession because userCreditControl is null");
+        // Check if the call session for the user exists and calls stop billing session
+        if ( userFromCreditControl.existCallSession(callId) ) {
+          userFromCreditControl.stopBillingSession(callId);
         }
 
-      }
+        if ( userToCreditControl.existCallSession(callId) ) {
+          userToCreditControl.stopBillingSession(callId);
+        }
       catch (Exception e) {
       logger.error( "==============> RM T2 logger: Failure in doBye method.", e );
       }
     }
-
 
 
     @Override
@@ -248,23 +235,23 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
             CreditControl userCreditControl = usersCreditDB.get(from);
 
             // Start billing session
-            userCreditControl.startBillingSession(callID, to);
-
-            // TODO:
-            // CreditControl userToCreditControl = usersCreditDB.get(to);
-
-            // userToCreditControl.startBillingSession(CallID, to, (to_flag = true) );
-
-            // in start billing session I need a flag to know if its the from or to user
-
-            // if its from it needs a different calculation than to
-            // which means that in callsession the tax calculation logic has to change based on the client (from or to)
-
-            // register the flag in callsession to differentiate the different types of taxation (from or to) 
+            userCreditControl.startBillingSession(callID, true);
 
           } else {
             // FIXME: CREATE A NEW CREDIT CONTROL OR JUST IGNORE?
           }
+
+          if (usersCreditDB.containsKey(to)) {
+            // Get the caller credit control
+            CreditControl userCreditControl = usersCreditDB.get(to);
+
+            // Start billing session
+            userCreditControl.startBillingSession(callID, false);   //to is false
+
+          } else {
+            // FIXME: CREATE A NEW CREDIT CONTROL OR JUST IGNORE?
+          }
+
         }
       }
       catch (Exception e) {
@@ -278,22 +265,22 @@ public class DiameterOpenIMSSipServlet extends SipServlet {
   {
     try
     {
-    logger.info("==============> RM T2 logger: Proccessing Error Response (" + response.getStatus() + ")...");
-    logger.info("==============> RM T2 logger: please complete doErrorResponse ...");
+      logger.info("==============> RM T2 logger: Proccessing Error Response (" + response.getStatus() + ")...");
+      logger.info("==============> RM T2 logger: please complete doErrorResponse ...");
+      
+      //404 - not found; User not found;
+      if(response.getStatus() == 404) {
+        // Let's see from whom to whom
+        String to =  response.getTo().getDisplayName() == null ? response.getTo().getURI().toString() : response.getTo().getDisplayName() + " <" + response.getTo().getURI() + ">";
+        String from = response.getFrom().getDisplayName() == null ? response.getFrom().getURI().toString() : response.getFrom().getDisplayName() + " <" + response.getFrom().getURI() + ">";
 
-    if(response.getStatus() == 404) //404 - not found; User not found;
-    {
-      // Let's see from whom to whom
-      String to =  response.getTo().getDisplayName() == null ? response.getTo().getURI().toString() : response.getTo().getDisplayName() + " <" + response.getTo().getURI() + ">";
-      String from = response.getFrom().getDisplayName() == null ? response.getFrom().getURI().toString() : response.getFrom().getDisplayName() + " <" + response.getFrom().getURI() + ">";
+        String toAddress = response.getTo().getURI().toString();
 
-      String toAddress = response.getTo().getURI().toString();
-
-    }
-    else
-    {
-      logger.info( "==============> RM T2 logger: Got error response (" + response.getStatus() + "). Not processing further." );
-    }
+      } else if (response.getStatus() == 402) {
+        // TODO: 
+      } else {
+        logger.info( "==============> RM T2 logger: Got error response (" + response.getStatus() + "). Not processing further." );
+      }
     }
     catch (Exception e) {
       logger.error( "==============> RM T2 logger: Failure in doErrorResponse method.", e );
