@@ -151,7 +151,10 @@ public class CreditControl
     if (flag == true) {
       // Reserves inital credit for the call - 20+20
       this.subCredit(40);
-    } 
+
+    } else {
+      this.subCredit(20);
+    }
     
     // Creates and adds a CallSession to the HashMap
     CallSession callSession = new CallSession(callID, this.credit, this, flag);
